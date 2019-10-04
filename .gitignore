@@ -1,5 +1,9 @@
+# for run
+run_*.sh
+
 # outputs
 output/
+logs/
 summary.csv
 
 # Byte-compiled / optimized / DLL files
