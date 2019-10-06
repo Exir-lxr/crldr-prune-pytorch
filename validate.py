@@ -17,6 +17,8 @@ from timm.models import create_model, apply_test_time_pool, load_checkpoint, is_
 from timm.data import Dataset, DatasetTar, create_loader, resolve_data_config
 from timm.utils import accuracy, AverageMeter, natural_key, setup_default_logging
 
+from xavier_lib import StatisticManager
+
 torch.backends.cudnn.benchmark = True
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Validation')
@@ -116,7 +118,12 @@ def validate(args):
     top5 = AverageMeter()
 
     model.eval()
+
+    test = StatisticManager()
+    test(model)
     end = time.time()
+    # for w in model.modules():
+    #     print(w)
     with torch.no_grad():
         for i, (input, target) in enumerate(loader):
             if args.no_prefetcher:
@@ -160,7 +167,7 @@ def validate(args):
 
     logging.info(' * Prec@1 {:.3f} ({:.3f}) Prec@5 {:.3f} ({:.3f})'.format(
        results['top1'], results['top1_err'], results['top5'], results['top5_err']))
-
+    test.save()
     return results
 
 
