@@ -166,6 +166,7 @@ def validate(args):
 
     logging.info(' * Prec@1 {:.3f} ({:.3f}) Prec@5 {:.3f} ({:.3f})'.format(
        results['top1'], results['top1_err'], results['top5'], results['top5_err']))
+    test.visualize()
     return results
 
 

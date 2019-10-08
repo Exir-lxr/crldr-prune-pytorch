@@ -81,4 +81,23 @@ class StatisticManager(object):
                 self.name_to_statistic[name] = (hook_cls, back_hook_cls)
 
     def visualize(self):
-        
+
+        from matplotlib import pyplot as plt
+        i = 1
+        for name in self.name_to_statistic:
+            (f_cls, b_cls) = self.name_to_statistic[name]
+            f_cov = f_cls.sum_covariance / f_cls.counter
+            b_cov = b_cls.sum_covariance / b_cls.counter
+            plt.subplot(10, 15, i)
+            plt.imshow(np.array(f_cov.cpu()), cmap='hot')
+            plt.xticks([])
+            plt.yticks([])
+            i += 1
+            plt.subplot(10, 15, i)
+            plt.imshow(np.array(b_cov.cpu()), cmap='hot')
+            plt.xticks([])
+            plt.yticks([])
+            i += 1
+            if i > 150:
+                break
+        plt.show()
