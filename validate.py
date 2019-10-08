@@ -122,40 +122,39 @@ def validate(args):
     test = StatisticManager()
     test(model)
     end = time.time()
-    # for w in model.modules():
-    #     print(w)
-    with torch.no_grad():
-        for i, (input, target) in enumerate(loader):
-            if args.no_prefetcher:
-                target = target.cuda()
-                input = input.cuda()
-                if args.fp16:
-                    input = input.half()
 
-            # compute output
-            output = model(input)
-            loss = criterion(output, target)
+    for i, (input, target) in enumerate(loader):
+        if args.no_prefetcher:
+            target = target.cuda()
+            input = input.cuda()
+            if args.fp16:
+                input = input.half()
 
-            # measure accuracy and record loss
-            prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-            losses.update(loss.item(), input.size(0))
-            top1.update(prec1.item(), input.size(0))
-            top5.update(prec5.item(), input.size(0))
+        # compute output
+        output = model(input)
+        loss = criterion(output, target)
+        loss.backward()
 
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
+        # measure accuracy and record loss
+        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
+        losses.update(loss.item(), input.size(0))
+        top1.update(prec1.item(), input.size(0))
+        top5.update(prec5.item(), input.size(0))
 
-            if i % args.log_freq == 0:
-                logging.info(
-                    'Test: [{0:>4d}/{1}]  '
-                    'Time: {batch_time.val:.3f}s ({batch_time.avg:.3f}s, {rate_avg:>7.2f}/s)  '
-                    'Loss: {loss.val:>7.4f} ({loss.avg:>6.4f})  '
-                    'Prec@1: {top1.val:>7.3f} ({top1.avg:>7.3f})  '
-                    'Prec@5: {top5.val:>7.3f} ({top5.avg:>7.3f})'.format(
-                        i, len(loader), batch_time=batch_time,
-                        rate_avg=input.size(0) / batch_time.avg,
-                        loss=losses, top1=top1, top5=top5))
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+        if i % args.log_freq == 0:
+            logging.info(
+                'Test: [{0:>4d}/{1}]  '
+                'Time: {batch_time.val:.3f}s ({batch_time.avg:.3f}s, {rate_avg:>7.2f}/s)  '
+                'Loss: {loss.val:>7.4f} ({loss.avg:>6.4f})  '
+                'Prec@1: {top1.val:>7.3f} ({top1.avg:>7.3f})  '
+                'Prec@5: {top5.val:>7.3f} ({top5.avg:>7.3f})'.format(
+                    i, len(loader), batch_time=batch_time,
+                    rate_avg=input.size(0) / batch_time.avg,
+                    loss=losses, top1=top1, top5=top5))
 
     results = OrderedDict(
         top1=round(top1.avg, 4), top1_err=round(100 - top1.avg, 4),
@@ -167,7 +166,6 @@ def validate(args):
 
     logging.info(' * Prec@1 {:.3f} ({:.3f}) Prec@5 {:.3f} ({:.3f})'.format(
        results['top1'], results['top1_err'], results['top5'], results['top5_err']))
-    test.save()
     return results
 
 
