@@ -67,6 +67,7 @@ class InfoStruct(object):
         # print('M: ', adjust_matrix.shape)
 
         adjusted_weight = torch.norm(torch.mm(self.adjust_matrix, torch.squeeze(self.weight)), dim=0)
+        print(adjusted_weight.shape)
         self.score = adjusted_weight * self.alpha
         self.sorted_index = torch.argsort(self.score)
         print(self.score)
