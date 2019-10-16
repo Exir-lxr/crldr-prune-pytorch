@@ -85,6 +85,7 @@ class MixedConv2d(nn.Module):
         in_splits = _split_channels(in_channels, num_groups)
         out_splits = _split_channels(out_channels, num_groups)
         for idx, (k, in_ch, out_ch) in enumerate(zip(kernel_size, in_splits, out_splits)):
+            print(idx, k, in_ch, out_ch, depthwise)
             d = 1
             # FIXME make compat with non-square kernel/dilations/strides
             if stride == 1 and dilated:
@@ -112,9 +113,11 @@ def select_conv2d(in_chs, out_chs, kernel_size, **kwargs):
     if isinstance(kernel_size, list):
         # We're going to use only lists for defining the MixedConv2d kernel groups,
         # ints, tuples, other iterables will continue to pass to normal conv and specify h, w.
+        print('--------')
         return MixedConv2d(in_chs, out_chs, kernel_size, **kwargs)
     else:
         depthwise = kwargs.pop('depthwise', False)
         groups = out_chs if depthwise else 1
+        print(kernel_size, in_chs, out_chs, 'group:', groups)
         return conv2d_pad(in_chs, out_chs, kernel_size, groups=groups, **kwargs)
 

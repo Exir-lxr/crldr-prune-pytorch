@@ -4,10 +4,11 @@ import numpy as np
 
 class InfoStruct(object):
 
-    def __init__(self, module, f_cls, b_cls):
+    def __init__(self, module, pre_f_cls, f_cls, b_cls):
 
         # init
         self.module = module
+        self.pre_f_cls = pre_f_cls
         self.f_cls = f_cls
         self.b_cls = b_cls
 
@@ -67,14 +68,19 @@ class InfoStruct(object):
         # print('M: ', adjust_matrix.shape)
 
         adjusted_weight = torch.norm(torch.mm(self.adjust_matrix, torch.squeeze(self.weight)), dim=0)
-        print(adjusted_weight.shape)
+
         self.score = adjusted_weight * self.alpha
         self.sorted_index = torch.argsort(self.score)
         print(self.score)
 
     def clear_zero_variance(self):
+
+        # according to zero variance mask, remove all the channels with 0 variance,
+        # this function first update [masks] in pre_forward_hook,
+        # then update parameters in [bn module] or biases in the last layer
+
         if self.bn_module is None:
-            print('Modify biase in', self.module)
+            print('Modify biases in', self.module)
 
         else:
             pass
@@ -141,6 +147,28 @@ class BackwardStatisticHook(object):
             compute_statistic_and_update(samples, self.sum_mean, self.sum_covariance, self.counter)
 
 
+class PreForwardHook(object):
+
+    def __init__(self, name, dim=4):
+        self.name = name
+        self.dim=dim
+        self.mask = None
+        self.base = None
+
+    def __call__(self, module, inputs):
+        channel_num = list(inputs[0].shape)[1]
+        if self.mask is None:
+            self.mask = torch.nn.Parameter(torch.ones(channel_num), requires_grad=False).cuda()
+        if self.dim == 4:
+            modified = torch.mul(inputs[0].permute([0, 2, 3, 1]), self.mask)
+            return tuple(modified.permute([0, 3, 1, 2]), )
+        elif self.dim == 2:
+            return tuple(torch.mul(inputs[0], self.mask))
+
+    def update_mask_base(self, new_mask):
+        self.mask.data = new_mask
+
+
 class StatisticManager(object):
 
     def __init__(self):
@@ -154,19 +182,23 @@ class StatisticManager(object):
 
             if isinstance(sub_module, torch.nn.Conv2d):
                 if sub_module.kernel_size[0] == 1:
+                    pre_hook_cls = PreForwardHook(name)
                     hook_cls = ForwardStatisticHook(name)
                     back_hook_cls = BackwardStatisticHook(name)
+                    sub_module.register_forward_pre_hook(pre_hook_cls)
                     sub_module.register_forward_hook(hook_cls)
                     sub_module.register_backward_hook(back_hook_cls)
-                    self.name_to_statistic[name] = InfoStruct(sub_module, hook_cls, back_hook_cls)
-                    print('conv', name)
+                    self.name_to_statistic[name] = InfoStruct(sub_module, pre_hook_cls, hook_cls, back_hook_cls)
+                print('conv', name)
 
             elif isinstance(sub_module, torch.nn.Linear):
+                pre_hook_cls = PreForwardHook(name, dim=2)
                 hook_cls = ForwardStatisticHook(name, dim=2)
                 back_hook_cls = BackwardStatisticHook(name, dim=2)
+                sub_module.register_forward_pre_hook(pre_hook_cls)
                 sub_module.register_forward_hook(hook_cls)
                 sub_module.register_backward_hook(back_hook_cls)
-                self.name_to_statistic[name] = InfoStruct(sub_module, hook_cls, back_hook_cls)
+                self.name_to_statistic[name] = InfoStruct(sub_module, pre_hook_cls, hook_cls, back_hook_cls)
                 print('conv', name)
 
             elif isinstance(sub_module, torch.nn.BatchNorm1d) or isinstance(sub_module, torch.nn.BatchNorm2d):

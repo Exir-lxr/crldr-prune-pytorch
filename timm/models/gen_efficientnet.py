@@ -724,6 +724,8 @@ class InvertedResidual(nn.Module):
         self.drop_connect_rate = drop_connect_rate
 
         # Point-wise expansion
+        print('--------')
+        print('exp')
         self.conv_pw = select_conv2d(in_chs, mid_chs, exp_kernel_size, padding=pad_type)
         self.bn1 = nn.BatchNorm2d(mid_chs, **bn_args)
 
@@ -732,6 +734,8 @@ class InvertedResidual(nn.Module):
             self.shuffle = ChannelShuffle(len(exp_kernel_size))
 
         # Depth-wise convolution
+        print('--------')
+        print('dw')
         self.conv_dw = select_conv2d(
             mid_chs, mid_chs, dw_kernel_size, stride=stride, padding=pad_type, depthwise=True)
         self.bn2 = nn.BatchNorm2d(mid_chs, **bn_args)
@@ -743,6 +747,8 @@ class InvertedResidual(nn.Module):
                 mid_chs, reduce_chs=max(1, int(se_base_chs * se_ratio)), act_fn=act_fn, gate_fn=se_gate_fn)
 
         # Point-wise linear projection
+        print('--------')
+        print('pw')
         self.conv_pwl = select_conv2d(mid_chs, out_chs, pw_kernel_size, padding=pad_type)
         self.bn3 = nn.BatchNorm2d(out_chs, **bn_args)
 
